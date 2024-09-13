@@ -1,149 +1,76 @@
-export function playCard(gameState, playerId, cardId) {
-    const player = gameState.players[playerId];
-    const card = player.hand.find(c => c.id === cardId);
-  
-    if (!card || player.cp < card.cost) {
-      return gameState; // Can't play the card
-    }
-  
-    const updatedPlayer = {
-      ...player,
-      hand: player.hand.filter(c => c.id !== cardId),
-      playArea: [...player.playArea, card],
-      cp: player.cp - card.cost,
-    };
-  
-    const updatedPlayers = gameState.players.map((p, index) => 
-      index === playerId ? updatedPlayer : p
-    );
-  
-    let updatedGameState = {
-      ...gameState,
-      players: updatedPlayers,
-    };
-  
-    // Handle card abilities
-    updatedGameState = handleCardAbility(updatedGameState, playerId, card);
-  
-    return updatedGameState;
+import { CARDS } from './cardData';
+export function initializeGame(numPlayers) {
+  const deck = shuffleDeck([...CARDS]);
+  const players = [];
+  for (let i = 0; i < numPlayers; i++) {
+    players.push({
+      id: i + 1,
+      hand: [],
+      playedCards: [],
+      chaosPoints: 5,
+      victoryPoints: 0,
+    });
   }
-  
-  function handleCardAbility(gameState, playerId, card) {
-    switch (card.id) {
-      case 'c1': // Flying Pig
-        return handleFlyingPigAbility(gameState, playerId);
-      case 'c2': // Jellybean Giant
-        return handleJellybeanGiantAbility(gameState, playerId);
-      // Add more cases for other cards
-      default:
-        return gameState;
+  // Deal initial hands
+  for (let i = 0; i < 5; i++) {
+    for (let player of players) {
+      player.hand.push(deck.pop());
     }
   }
-
-  function handleJellybeanGiantAbility(gameState, playerId) {
-    const currentPlayer = gameState.players[playerId];
-    const updatedPlayArea = currentPlayer.playArea.map(card => 
-      card.type === 'Creature' && card.id !== 'c2' ? { ...card, def: card.def + 2 } : card
-    );
-  
-    const candyCastleInPlay = currentPlayer.playArea.some(card => card.id === 's1');
-    const vpGain = candyCastleInPlay ? 2 : 0;
-  
-    const updatedPlayer = {
-      ...currentPlayer,
-      playArea: updatedPlayArea,
-      vp: currentPlayer.vp + vpGain,
-    };
-  
-    const updatedPlayers = gameState.players.map((p, index) => 
-      index === playerId ? updatedPlayer : p
-    );
-  
-    return {
-      ...gameState,
-      players: updatedPlayers,
-    };
+  return {
+    deck,
+    players,
+    currentPlayer: 0,
+    turn: 1,
+  };
+}
+export function drawCard(gameState, playerIndex) {
+  const player = gameState.players[playerIndex];
+  const card = gameState.deck.pop();
+  player.hand.push(card);
+  return { ...gameState };
+}
+export function playCard(gameState, playerIndex, cardIndex) {
+  const player = gameState.players[playerIndex];
+  const card = player.hand[cardIndex];
+  if (player.chaosPoints >= card.cost) {
+    player.chaosPoints -= card.cost;
+    player.playedCards.push(card);
+    player.hand.splice(cardIndex, 1);
+    // Apply card effects
+    applyCardEffects(gameState, playerIndex, card);
   }
-  
-  function handleFlyingPigAbility(gameState, playerId) {
-    const otherPlayers = gameState.players.filter((_, index) => index !== playerId);
-    const targetPlayer = otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
-    
-    if (targetPlayer.hand.length === 0) return gameState;
-  
-    const stolenCard = targetPlayer.hand[Math.floor(Math.random() * targetPlayer.hand.length)];
-    const updatedTargetPlayer = {
-      ...targetPlayer,
-      hand: targetPlayer.hand.filter(c => c.id !== stolenCard.id),
-    };
-  
-    const currentPlayer = gameState.players[playerId];
-    const updatedCurrentPlayer = {
-      ...currentPlayer,
-      hand: stolenCard.type === 'Artifact' ? currentPlayer.hand : [...currentPlayer.hand, stolenCard],
-      playArea: stolenCard.type === 'Artifact' ? [...currentPlayer.playArea, stolenCard] : currentPlayer.playArea,
-    };
-  
-    const updatedPlayers = gameState.players.map((p, index) => {
-      if (index === playerId) return updatedCurrentPlayer;
-      if (p.id === targetPlayer.id) return updatedTargetPlayer;
-      return p;
-    });
-  
-    return {
-      ...gameState,
-      players: updatedPlayers,
-    };
+  return { ...gameState };
+}
+export function endTurn(gameState, playerIndex) {
+  // Gain 2 CPs at the start of the next turn
+  gameState.players[playerIndex].chaosPoints += 2;
+  // Draw 2 cards for the next turn
+  drawCard(gameState, playerIndex);
+  drawCard(gameState, playerIndex);
+  gameState.turn++;
+  return { ...gameState };
+}
+function shuffleDeck(deck) {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
   }
-  
-  // Implement other card ability handlers...
-  
-  export function endTurn(gameState) {
-    const nextPlayer = (gameState.currentPlayer + 1) % gameState.players.length;
-    const updatedPlayers = gameState.players.map((player, index) => {
-      if (index === nextPlayer) {
-        return {
-          ...player,
-          cp: player.cp + 2,
-          hand: [...player.hand, ...drawCards(gameState.deck, 2)]
-        };
-      }
-      return player;
-    });
-  
-    const updatedGameState = {
-      ...gameState,
-      currentPlayer: nextPlayer,
-      players: updatedPlayers,
-      turnNumber: gameState.turnNumber + 1,
-      currentPhase: 'draw',
-      deck: gameState.deck.slice(2) // Remove the 2 drawn cards from the deck
-    };
-  
-    // AI opponent's turn
-    if (nextPlayer === 1) {
-      return aiTurn(updatedGameState);
+  return deck;
+}
+function applyCardEffects(gameState, playerIndex, card) {
+  // Implement card-specific effects here
+  // This is a simplified version and should be expanded based on card abilities
+  if (card.type === 'Creature') {
+    gameState.players[playerIndex].victoryPoints += 1;
+  } else if (card.type === 'Structure') {
+    gameState.players[playerIndex].victoryPoints += 2;
+  } else if (card.type === 'Artifact') {
+    gameState.players[playerIndex].chaosPoints += 1;
+  } else if (card.type === 'Event') {
+    // Apply event effects to all players
+    for (let player of gameState.players) {
+      player.chaosPoints += 1;
     }
-  
-    return updatedGameState;
   }
-  
-  function aiTurn(gameState) {
-    const aiPlayer = gameState.players[1];
-    let updatedGameState = { ...gameState };
-  
-    // Play cards
-    aiPlayer.hand.forEach(card => {
-      if (aiPlayer.cp >= card.cost) {
-        updatedGameState = playCard(updatedGameState, 1, card.id);
-      }
-    });
-  
-    // End AI turn
-    return endTurn(updatedGameState);
-  }
-  
-  function drawCards(deck, count) {
-    return deck.slice(0, count);
-  }
-  
+}

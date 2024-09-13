@@ -1,0 +1,44 @@
+.rules {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.rules h1 {
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.rules h2 {
+    color: #4CAF50;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.rules p,
+.rules li {
+    line-height: 1.6;
+    color: #666;
+}
+
+.rules ul {
+    padding-left: 2rem;
+}
+
+.back-button {
+    display: inline-block;
+    margin-top: 2rem;
+    padding: 0.5rem 1rem;
+    background-color: #4CAF50;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.back-button:hover {
+    background-color: #45a049;
+}
